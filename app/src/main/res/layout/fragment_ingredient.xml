@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
+    android:background="#FFFFFF"
     tools:context=".ui.ingredient.IngredientFragment"
     android:layout_marginTop="40dp">
 
@@ -12,30 +13,57 @@
         android:id="@+id/btn_select_ingredient"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/ingredient_selection" />
+        android:text="@string/ingredient_selection"
+        android:background="@drawable/button_background"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:textSize="16sp"
+        />
 
     <Button
         android:id="@+id/btn_purchase_date"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/purchase_date_selection" />
+        android:text="@string/purchase_date_selection"
+        android:background="@drawable/button_background"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:textSize="16sp"
+        />
 
     <Button
         android:id="@+id/btn_expiry_date"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/expiry_date_selection" />
+        android:text="@string/expiry_date_selection"
+        android:background="@drawable/button_background"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:textSize="16sp"
+        />
 
     <Spinner
         android:id="@+id/spinner_storage_location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:prompt="@string/storage_location_prompt" />
+        android:prompt="@string/storage_location_prompt"
+        android:background="@drawable/spinner_background"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:textSize="16sp" />
 
     <Button
         android:id="@+id/btn_add"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/add" />
+        android:text="@string/add"
+        android:background="@drawable/button_background"
+        android:textColor="#FFFFFF"
+        android:padding="12dp"
+        android:textSize="16sp"
+        />
 
 </LinearLayout>
