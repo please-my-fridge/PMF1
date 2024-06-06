@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -32,6 +33,14 @@ class RecipeFragment : Fragment() {
         recipeViewModel.text.observe(viewLifecycleOwner) {
             textView.text = it
         }
+
+        val buttonRecommend: Button = binding.buttonRecommend
+        buttonRecommend.setOnClickListener {
+            // 추천 기능 구현 장소
+            recipeViewModel.recommendRecipe()
+        }
+
+
         return root
     }
 
