@@ -1,22 +1,26 @@
 package com.example.pmf.ui.main
 
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import com.example.pmf.DB.DBHelper
+import com.example.pmf.DB.Ingredient
 import com.example.pmf.R
 import com.example.pmf.databinding.FragmentMainBinding
 import com.example.pmf.ui.main.elements.ColdStorageFragment
 import com.example.pmf.ui.main.elements.FreezeFragment
 import com.example.pmf.ui.main.elements.RoomTemperatureStorageFragment
+import com.example.pmf.ui.ingredient.IngredientViewModel
 
 class MainFragment : Fragment() {
     private var _binding: FragmentMainBinding? = null
     private val binding get() = _binding!!
-    private var currentFragment: Fragment? = null
+
+    private lateinit var dbHelper: DBHelper
+    private val sharedViewModel: IngredientViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -29,39 +33,67 @@ class MainFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        dbHelper = DBHelper(requireContext())
+
+        // 데이터베이스에서 데이터 로드 및 ViewModel에 설정
+        loadIngredientsFromDatabase()
+
         // 초기 프래그먼트 설정
-        setFragment(ColdStorageFragment())
+        setFragment(ColdStorageFragment(), sharedViewModel.coldStorageIngredients.value ?: emptyList())
 
         // 각 버튼에 클릭 리스너 설정
-        binding.buttonFragment1.setOnClickListener { setFragment(ColdStorageFragment()) }
-        binding.buttonFragment2.setOnClickListener { setFragment(FreezeFragment()) }
-        binding.buttonFragment3.setOnClickListener { setFragment(RoomTemperatureStorageFragment()) }
+        binding.buttonFragment1.setOnClickListener { setFragment(ColdStorageFragment(), sharedViewModel.coldStorageIngredients.value ?: emptyList()) }
+        binding.buttonFragment2.setOnClickListener { setFragment(FreezeFragment(), sharedViewModel.freezeStorageIngredients.value ?: emptyList()) }
+        binding.buttonFragment3.setOnClickListener { setFragment(RoomTemperatureStorageFragment(), sharedViewModel.roomTemperatureStorageIngredients.value ?: emptyList()) }
 
-        // 검색 필터링
-        binding.editTextSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                filterCurrentFragment(s.toString())
-            }
-
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        // ViewModel로부터 데이터 수신
+        sharedViewModel.ingredientAdded.observe(viewLifecycleOwner) { ingredient ->
+            addIngredientToStorage(ingredient)
+        }
     }
 
-    private fun setFragment(fragment: Fragment) {
-        currentFragment = fragment
+    private fun loadIngredientsFromDatabase() {
+        val coldStorageIngredients = dbHelper.searchItemsByStorageLocation("냉장고")
+        val freezeStorageIngredients = dbHelper.searchItemsByStorageLocation("냉동고")
+        val roomTemperatureStorageIngredients = dbHelper.searchItemsByStorageLocation("실온")
+
+        sharedViewModel.setColdStorageIngredients(coldStorageIngredients)
+        sharedViewModel.setFreezeStorageIngredients(freezeStorageIngredients)
+        sharedViewModel.setRoomTemperatureStorageIngredients(roomTemperatureStorageIngredients)
+    }
+
+    private fun setFragment(fragment: Fragment, ingredients: List<Ingredient>) {
+        val bundle = Bundle().apply {
+            putParcelableArrayList("ingredients", ArrayList(ingredients))
+        }
+        fragment.arguments = bundle
+
         childFragmentManager.beginTransaction().apply {
             replace(R.id.fragmentContainer, fragment)
             commitNow()
         }
     }
 
-    private fun filterCurrentFragment(query: String) {
-        when (currentFragment) {
-            is ColdStorageFragment -> (currentFragment as ColdStorageFragment).filterItems(query)
-            is FreezeFragment -> (currentFragment as FreezeFragment).filterItems(query)
-            is RoomTemperatureStorageFragment -> (currentFragment as RoomTemperatureStorageFragment).filterItems(query)
+    private fun addIngredientToStorage(ingredient: Ingredient) {
+        when (ingredient.storageLocation) {
+            "냉장고" -> {
+                sharedViewModel.addIngredientToColdStorage(ingredient)
+                if (childFragmentManager.findFragmentById(R.id.fragmentContainer) is ColdStorageFragment) {
+                    setFragment(ColdStorageFragment(), sharedViewModel.coldStorageIngredients.value ?: emptyList())
+                }
+            }
+            "냉동고" -> {
+                sharedViewModel.addIngredientToFreezeStorage(ingredient)
+                if (childFragmentManager.findFragmentById(R.id.fragmentContainer) is FreezeFragment) {
+                    setFragment(FreezeFragment(), sharedViewModel.freezeStorageIngredients.value ?: emptyList())
+                }
+            }
+            "실온" -> {
+                sharedViewModel.addIngredientToRoomTemperatureStorage(ingredient)
+                if (childFragmentManager.findFragmentById(R.id.fragmentContainer) is RoomTemperatureStorageFragment) {
+                    setFragment(RoomTemperatureStorageFragment(), sharedViewModel.roomTemperatureStorageIngredients.value ?: emptyList())
+                }
+            }
         }
     }
 

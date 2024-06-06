@@ -2,18 +2,19 @@ package com.example.pmf.ui.ingredient
 
 import android.app.DatePickerDialog
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResultListener
-import androidx.navigation.fragment.findNavController
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.activityViewModels
 import com.example.pmf.DB.DBHelper
+import com.example.pmf.DB.Ingredient
 import com.example.pmf.R
 import java.text.SimpleDateFormat
 import java.util.*
@@ -24,6 +25,8 @@ class IngredientFragment : Fragment() {
     private lateinit var selectedPurchaseDate: String
     private lateinit var selectedExpiryDate: String
     private lateinit var selectedIngredient: String
+    private lateinit var selectIngredientButton: Button
+    private val sharedViewModel: IngredientViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -33,15 +36,17 @@ class IngredientFragment : Fragment() {
 
         dbHelper = DBHelper(requireContext())
 
-        val btnSelectIngredient: Button = root.findViewById(R.id.btn_select_ingredient)
+        selectIngredientButton = root.findViewById(R.id.btn_select_ingredient)
         val btnAdd: Button = root.findViewById(R.id.btn_add)
         val btnPurchaseDate: Button = root.findViewById(R.id.btn_purchase_date)
         val btnExpiryDate: Button = root.findViewById(R.id.btn_expiry_date)
-        val etQuantity: EditText = root.findViewById(R.id.et_quantity)
         val spinnerStorageLocation: Spinner = root.findViewById(R.id.spinner_storage_location)
 
-        btnSelectIngredient.setOnClickListener {
-            findNavController().navigate(R.id.action_ingredientFragment_to_ingredientSelectionFragment)
+        selectIngredientButton.setOnClickListener {
+            val fragmentManager: FragmentManager = requireActivity().supportFragmentManager
+            val ingredientSearchDialogFragment = IngredientSearchDialogFragment()
+            ingredientSearchDialogFragment.show(fragmentManager, "ingredient_search_dialog")
+            Log.d("IngredientFragment", "IngredientSearchDialogFragment shown")
         }
 
         // 보관 장소 스피너 설정
@@ -75,37 +80,28 @@ class IngredientFragment : Fragment() {
 
         btnAdd.setOnClickListener {
             val storageLocation = spinnerStorageLocation.selectedItem.toString()
-            val quantity = etQuantity.text.toString().trim()
 
-            if (::selectedIngredient.isInitialized && ::selectedPurchaseDate.isInitialized && ::selectedExpiryDate.isInitialized && quantity.isNotEmpty()) {
-                dbHelper.addItem(selectedIngredient, selectedPurchaseDate, selectedExpiryDate, storageLocation, quantity.toInt())
+            if (::selectedIngredient.isInitialized && ::selectedPurchaseDate.isInitialized && ::selectedExpiryDate.isInitialized) {
+                val ingredient = Ingredient(selectedIngredient, selectedPurchaseDate, selectedExpiryDate, storageLocation)
+                dbHelper.addItem(ingredient.name, ingredient.purchaseDate, ingredient.expiryDate, ingredient.storageLocation)
                 Toast.makeText(requireContext(), "재료가 추가되었습니다.", Toast.LENGTH_SHORT).show()
-
-                // 필드 초기화
-                btnSelectIngredient.text = "재료 선택"
-                btnPurchaseDate.text = "구매 날짜 선택"
-                btnExpiryDate.text = "소비 기한 선택"
-                spinnerStorageLocation.setSelection(0)
-                etQuantity.text.clear()
-
-                // 초기화 변수
-                selectedIngredient = ""
-                selectedPurchaseDate = ""
-                selectedExpiryDate = ""
+                sharedViewModel.addIngredient(ingredient)
             } else {
-                Toast.makeText(requireContext(), "모든 필드를 입력하세요.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // FragmentResultListener를 통해 데이터 수신 설정
-        setFragmentResultListener("ingredientSelectionKey") { _, bundle ->
-            val result = bundle.getString("selectedIngredient")
-            if (result != null) {
-                selectedIngredient = result
-                btnSelectIngredient.text = selectedIngredient
+                Toast.makeText(requireContext(), "모든 항목을 선택해주세요.", Toast.LENGTH_SHORT).show()
             }
         }
 
         return root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        Log.d("IngredientFragment", "Setting FragmentResultListener in onViewCreated")
+
+        sharedViewModel.selectedIngredient.observe(viewLifecycleOwner) { ingredient ->
+            Log.d("IngredientFragment", "Received ingredient: $ingredient")
+            selectedIngredient = ingredient
+            selectIngredientButton.text = ingredient
+        }
     }
 }

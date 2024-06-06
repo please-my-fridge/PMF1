@@ -20,6 +20,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
+import com.example.pmf.DB.BasicIngredientsDBHelper
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -101,4 +102,5 @@ class MainActivity : AppCompatActivity() {
 
         alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, startTime, interval, pendingIntent)
     }
+
 }

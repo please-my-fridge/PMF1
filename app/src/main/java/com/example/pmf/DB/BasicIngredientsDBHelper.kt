@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.content.ContentValues
+import android.util.Log
 
 data class BasicIngredient(val id: Int, val name: String)
 
@@ -15,7 +16,20 @@ class BasicIngredientsDBHelper(context: Context) : SQLiteOpenHelper(context, DAT
         const val TABLE_NAME = "basic_ingredients"
         const val COLUMN_ID = "id"
         const val COLUMN_NAME = "name"
+        fun deleteDatabase(context: Context): Boolean {
+            val dbPath = context.getDatabasePath(DATABASE_NAME).absolutePath
+            Log.i("BasicIngredientsDBHelper", "Deleting database at: $dbPath")
+            return context.deleteDatabase(DATABASE_NAME)
+        }
+        fun logDatabasePath(context: Context) {
+            val dbPath = context.getDatabasePath(DATABASE_NAME).absolutePath
+            Log.d("BasicIngredientsDBHelper", "Database path: $dbPath")
+        }
+
     }
+
+
+
 
     override fun onCreate(db: SQLiteDatabase) {
         val createTable = """
@@ -28,58 +42,15 @@ class BasicIngredientsDBHelper(context: Context) : SQLiteOpenHelper(context, DAT
         insertInitialData(db)
     }
 
+
     private fun insertInitialData(db: SQLiteDatabase) {
         val initialData = listOf(
-            BasicIngredient(1, "토마토"),
+            BasicIngredient(1, "tomato"),
             BasicIngredient(2, "carrot"),
-            BasicIngredient(3, "우유"),
+            BasicIngredient(3, "milk"),
             BasicIngredient(4, "계란"),
             BasicIngredient(5, "빵"),
-            BasicIngredient(6, "참외"),
-            BasicIngredient(7, "양파"),
-            BasicIngredient(8, "감자"),
-            BasicIngredient(9, "고구마"),
-            BasicIngredient(10, "사과"),
-            BasicIngredient(11, "바나나"),
-            BasicIngredient(12, "상추"),
-            BasicIngredient(13, "고추"),
-            BasicIngredient(14, "마늘"),
-            BasicIngredient(15, "파"),
-            BasicIngredient(16, "시금치"),
-            BasicIngredient(17, "오이"),
-            BasicIngredient(18, "가지"),
-            BasicIngredient(19, "버섯"),
-            BasicIngredient(20, "양배추"),
-            BasicIngredient(21, "배추"),
-            BasicIngredient(22, "콩나물"),
-            BasicIngredient(23, "두부"),
-            BasicIngredient(24, "참치캔"),
-            BasicIngredient(25, "스팸"),
-            BasicIngredient(26, "김치"),
-            BasicIngredient(27, "된장"),
-            BasicIngredient(28, "고추장"),
-            BasicIngredient(29, "간장"),
-            BasicIngredient(30, "참기름"),
-            BasicIngredient(31, "식초"),
-            BasicIngredient(32, "설탕"),
-            BasicIngredient(33, "소금"),
-            BasicIngredient(34, "후추"),
-            BasicIngredient(35, "고춧가루"),
-            BasicIngredient(36, "다진마늘"),
-            BasicIngredient(37, "미역"),
-            BasicIngredient(38, "멸치"),
-            BasicIngredient(39, "쌀"),
-            BasicIngredient(40, "라면"),
-            BasicIngredient(41, "스파게티"),
-            BasicIngredient(42, "케첩"),
-            BasicIngredient(43, "마요네즈"),
-            BasicIngredient(44, "버터"),
-            BasicIngredient(45, "치즈"),
-            BasicIngredient(46, "햄"),
-            BasicIngredient(47, "베이컨"),
-            BasicIngredient(48, "소세지"),
-            BasicIngredient(49, "닭가슴살"),
-            BasicIngredient(50, "연어")
+            BasicIngredient(6, "참외")
         )
 
         initialData.forEach {
@@ -100,6 +71,23 @@ class BasicIngredientsDBHelper(context: Context) : SQLiteOpenHelper(context, DAT
         val itemList = mutableListOf<BasicIngredient>()
         val db = this.readableDatabase
         val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME", null)
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID))
+                val name = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NAME))
+                itemList.add(BasicIngredient(id, name))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return itemList
+    }
+
+
+    fun searchItems(query: String): List<BasicIngredient> {
+        val itemList = mutableListOf<BasicIngredient>()
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_NAME WHERE $COLUMN_NAME LIKE ?", arrayOf("%$query%"))
         if (cursor.moveToFirst()) {
             do {
                 val id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID))

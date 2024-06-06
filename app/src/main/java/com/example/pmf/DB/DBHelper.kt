@@ -4,27 +4,40 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import android.os.Parcel
+import android.os.Parcelable
 
 data class Ingredient(
     val name: String,
     val purchaseDate: String,
     val expiryDate: String,
-    val storageLocation: String,
-    val quantity: Int
-) {
-    fun getRemainingDays(): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val expiry = sdf.parse(expiryDate)
-        val today = Date()
-        val diff = expiry.time - today.time
-        val days = diff / (1000 * 60 * 60 * 24)
-        return if (days >= 0) {
-            "D-$days"
-        } else {
-            "D+${-days}"
+    val storageLocation: String
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: ""
+    )
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(name)
+        parcel.writeString(purchaseDate)
+        parcel.writeString(expiryDate)
+        parcel.writeString(storageLocation)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<Ingredient> {
+        override fun createFromParcel(parcel: Parcel): Ingredient {
+            return Ingredient(parcel)
+        }
+
+        override fun newArray(size: Int): Array<Ingredient?> {
+            return arrayOfNulls(size)
         }
     }
 }
@@ -33,13 +46,12 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
 
     companion object {
         private const val DATABASE_NAME = "ingredients.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 3
         const val TABLE_NAME = "ingre"
         const val COLUMN_NAME = "name"
         const val COLUMN_PURCHASE_DATE = "purchase_date"
         const val COLUMN_EXPIRY_DATE = "expiry_date"
         const val COLUMN_STORAGE_LOCATION = "storage_location"
-        const val COLUMN_QUANTITY = "quantity"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -49,7 +61,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 $COLUMN_PURCHASE_DATE DATE,
                 $COLUMN_EXPIRY_DATE DATE,
                 $COLUMN_STORAGE_LOCATION CHAR(50),
-                $COLUMN_QUANTITY INTEGER,
                 PRIMARY KEY ($COLUMN_NAME, $COLUMN_PURCHASE_DATE)
             )
         """
@@ -58,11 +69,13 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
     }
 
     private fun insertInitialData(db: SQLiteDatabase) {
-        // 초기 데이터 삽입 예제
         val initialData = listOf(
-            Ingredient("carrot", "2024-01-01", "2024-01-10", "냉장고", 10),
-            Ingredient("당근", "2024-01-02", "2024-06-03", "냉동고", 5),
-            Ingredient("우유", "2024-01-03", "2024-01-05", "냉장고", 2)
+            Ingredient("토마토", "2024-01-01", "2024-01-10", "냉장고"),
+            Ingredient("당근", "2024-01-02", "2024-06-03", "냉동고"),
+            Ingredient("우유", "2024-01-03", "2024-01-05", "냉장고"),
+            Ingredient("계란", "2024-01-04", "2024-01-20", "냉장고"),
+            Ingredient("빵", "2024-01-05", "2024-01-08", "실온"),
+            Ingredient("참외", "2024-01-06", "2024-01-30", "실온")
         )
 
         initialData.forEach {
@@ -71,36 +84,36 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 put(COLUMN_PURCHASE_DATE, it.purchaseDate)
                 put(COLUMN_EXPIRY_DATE, it.expiryDate)
                 put(COLUMN_STORAGE_LOCATION, it.storageLocation)
-                put(COLUMN_QUANTITY, it.quantity)
             }
             db.insert(TABLE_NAME, null, values)
         }
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-        onCreate(db)
+        if (oldVersion < newVersion) {
+            // 여기서 필요한 경우 추가적인 마이그레이션 로직을 추가할 수 있습니다.
+            db.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
+            onCreate(db)
+        }
     }
 
-    fun addItem(name: String, purchaseDate: String, expiryDate: String, storageLocation: String, quantity: Int) {
+    fun addItem(name: String, purchaseDate: String, expiryDate: String, storageLocation: String) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
             put(COLUMN_NAME, name)
             put(COLUMN_PURCHASE_DATE, purchaseDate)
             put(COLUMN_EXPIRY_DATE, expiryDate)
             put(COLUMN_STORAGE_LOCATION, storageLocation)
-            put(COLUMN_QUANTITY, quantity)
         }
         db.insert(TABLE_NAME, null, values)
         db.close()
     }
 
-    fun updateItem(name: String, purchaseDate: String, expiryDate: String, storageLocation: String, quantity: Int) {
+    fun updateItem(name: String, purchaseDate: String, expiryDate: String, storageLocation: String) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
             put(COLUMN_EXPIRY_DATE, expiryDate)
             put(COLUMN_STORAGE_LOCATION, storageLocation)
-            put(COLUMN_QUANTITY, quantity)
         }
         db.update(TABLE_NAME, values, "$COLUMN_NAME = ? AND $COLUMN_PURCHASE_DATE = ?", arrayOf(name, purchaseDate))
         db.close()
@@ -114,15 +127,14 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
 
     fun getItem(name: String, purchaseDate: String): Ingredient? {
         val db = this.readableDatabase
-        val cursor = db.query(TABLE_NAME, arrayOf(COLUMN_NAME, COLUMN_PURCHASE_DATE, COLUMN_EXPIRY_DATE, COLUMN_STORAGE_LOCATION, COLUMN_QUANTITY), "$COLUMN_NAME = ? AND $COLUMN_PURCHASE_DATE = ?", arrayOf(name, purchaseDate), null, null, null)
+        val cursor = db.query(TABLE_NAME, arrayOf(COLUMN_NAME, COLUMN_PURCHASE_DATE, COLUMN_EXPIRY_DATE, COLUMN_STORAGE_LOCATION), "$COLUMN_NAME = ? AND $COLUMN_PURCHASE_DATE = ?", arrayOf(name, purchaseDate), null, null, null)
         cursor?.moveToFirst()
         val item = if (cursor.count > 0) {
             Ingredient(
                 cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NAME)),
                 cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PURCHASE_DATE)),
                 cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPIRY_DATE)),
-                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_STORAGE_LOCATION)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_QUANTITY))
+                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_STORAGE_LOCATION))
             )
         } else {
             null
@@ -142,8 +154,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 val purchaseDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PURCHASE_DATE))
                 val expiryDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPIRY_DATE))
                 val storageLocation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_STORAGE_LOCATION))
-                val quantity = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_QUANTITY))
-                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation, quantity))
+                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation))
             } while (cursor.moveToNext())
         }
         cursor.close()
@@ -161,16 +172,13 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 val purchaseDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PURCHASE_DATE))
                 val expiryDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPIRY_DATE))
                 val storageLocation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_STORAGE_LOCATION))
-                val quantity = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_QUANTITY))
-                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation, quantity))
+                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation))
             } while (cursor.moveToNext())
         }
         cursor.close()
         db.close()
         return itemList
     }
-
-
 
     fun searchItemsByStorageLocation(location: String): List<Ingredient> {
         val itemList = mutableListOf<Ingredient>()
@@ -182,8 +190,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 val purchaseDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PURCHASE_DATE))
                 val expiryDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPIRY_DATE))
                 val storageLocation = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_STORAGE_LOCATION))
-                val quantity = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_QUANTITY))
-                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation, quantity))
+                itemList.add(Ingredient(name, purchaseDate, expiryDate, storageLocation))
             } while (cursor.moveToNext())
         }
         cursor.close()
