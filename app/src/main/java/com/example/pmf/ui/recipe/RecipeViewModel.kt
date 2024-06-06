@@ -40,10 +40,10 @@ class RecipeViewModel : ViewModel() {
                 null
             } else {
                 val ranking= when (missingIngredients.size) {
-                    0 -> 1 to "바로 요리 가능!"
-                    1 -> 2 to "하나만 사오면 돼요"
-                    2 -> 3 to "두개만 사오면 돼요!"
-                    else -> 4 to "많이 사와야 돼요.."
+                    0 -> 1 to "최우선 추천메뉴"
+                    1 -> 2 to "재료 하나 부족"
+                    2 -> 3 to "재료 두개 부족"
+                    else -> 4 to "재료 세개 이상 부족"
                 }
                 recipe to ranking
             }
